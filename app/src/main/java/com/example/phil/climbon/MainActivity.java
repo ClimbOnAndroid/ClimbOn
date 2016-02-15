@@ -16,7 +16,9 @@ import android.view.MenuItem;
 import com.esri.android.map.FeatureLayer;
 import com.esri.android.map.LocationDisplayManager;
 import com.esri.android.map.MapView;
+import com.esri.android.map.ags.ArcGISFeatureLayer;
 import com.esri.core.geometry.Point;
+import com.firebase.client.Firebase;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -24,16 +26,25 @@ public class MainActivity extends AppCompatActivity {
     protected Point userLocation;
     protected MapView theMap;
     protected LocationDisplayManager theManager;
+    protected ArcGISFeatureLayer fLayer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        String URL = "http://services6.arcgis.com/nOUvbp8zErFpCAfI/arcgis/rest/services/Areas/FeatureServer/0";
+        fLayer = new ArcGISFeatureLayer(URL, ArcGISFeatureLayer.MODE.ONDEMAND );
+        Log.i("Test", fLayer.toString());
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Firebase.setAndroidContext(this);
+        Firebase joshuaTree = new Firebase("https://fiery-inferno-8487.firebaseio.com/");
 
+        Area jTree = new Area(joshuaTree, MainActivity.this );
         //initialize the map and the userLocationManager
         theMap = (MapView) findViewById(R.id.map);
         theManager = theMap.getLocationDisplayManager();
         theManager.start();
+        fLayer.setVisible(true);
+        theMap.addLayer(fLayer);
 
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
