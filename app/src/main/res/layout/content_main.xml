@@ -9,7 +9,7 @@
     android:paddingRight="0dp"
     android:paddingTop="0dp"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="com.example.phil.climbon.MainActivity"
+    tools:context="cpp.example.phil.climbon.MainActivity"
     tools:showIn="@layout/activity_main">
 
     <com.esri.arcgisruntime.mapping.view.MapView
