@@ -3,8 +3,7 @@ package com.example.phil.climbon;
 import android.content.Context;
 import android.util.Log;
 
-import com.esri.core.geometry.Geometry;
-import com.esri.core.portal.FeatureCollection;
+import com.esri.arcgisruntime.geometry.Geometry;
 import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
 import com.firebase.client.FirebaseError;
@@ -15,45 +14,26 @@ import com.firebase.client.ValueEventListener;
  */
 public class Area {
     private Context context;
-    FeatureCollection featureCollection;
+
     Geometry boundries;
     Firebase data;
     String name;
+    Long id;
+    String description;
     Area[] subAreas;
 
 
-    public Area(Firebase data, Context context) {
-        this.data = data;
-        this.context =context;
-
-        data.child("0").addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-
-                for(DataSnapshot x : dataSnapshot.getChildren()){
-                    Log.i("Test","Data" +x+  " : " + x.getClass().getName());
-
-                }
-            }
-
-            @Override
-            public void onCancelled(FirebaseError firebaseError) {
-
-            }
-        });
-
-
-
+    public Area(String name, Long ID, String description) {
+        this.name = name;
+        this.description = description;
+        this.id = ID;
 
     }
 
-    public FeatureCollection getFeatureCollection() {
-        return featureCollection;
-    }
 
-    public void setFeatureCollection(FeatureCollection featureCollection) {
-        this.featureCollection = featureCollection;
-    }
+    public String getDescription(){return description;}
+
+    public void setDescription(String description){this.description = description;}
 
     public Geometry getBoundries() {
         return boundries;
