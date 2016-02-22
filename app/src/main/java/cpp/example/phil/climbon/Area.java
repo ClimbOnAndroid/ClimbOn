@@ -18,6 +18,9 @@ public class Area {
     String description;
     Area[] subAreas;
 
+    public Area(){
+
+    }
 
     public Area(String name, Long ID, String description) {
         this.name = name;
@@ -62,6 +65,8 @@ public class Area {
     public void setSubAreas(Area[] subAreas) {
         this.subAreas = subAreas;
     }
+
+    public void setId(Long id){this.id = id;}
 
 
 
