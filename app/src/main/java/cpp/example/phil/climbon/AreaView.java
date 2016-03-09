@@ -16,6 +16,7 @@ import com.esri.arcgisruntime.datasource.Feature;
 import com.esri.arcgisruntime.datasource.FeatureQueryResult;
 import com.esri.arcgisruntime.datasource.QueryParameters;
 import com.esri.arcgisruntime.datasource.arcgis.ServiceFeatureTable;
+import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -60,22 +61,24 @@ public class AreaView extends AppCompatActivity {
     }
 
     public  void getRoutesForArea(Area area){
-        final Area queryArea = area;
-        final ServiceFeatureTable table =  RouteMap.getRouteTable(this);
-        table.getOutFields().add("*");
-        table.loadAsync();
 
-        table.addDoneLoadingListener(new Runnable() {
-            @Override
-            public void run() {
-                QueryParameters parameters = new QueryParameters();
-                parameters.getOutFields().add("*");
-                parameters.setGeometry(queryArea.getBoundries());
+                final Area queryArea = area;
+                final ServiceFeatureTable table =  RouteMap.getRouteTable(this);
+
+                if(table.getLoadStatus()==LoadStatus.NOT_LOADED) {
+                    table.getOutFields().add("*");
+                    table.loadAsync();
+                }
+                table.addDoneLoadingListener(new Runnable() {
+                    @Override
+                    public void run() {
+                        QueryParameters parameters = new QueryParameters();
+                        parameters.getOutFields().add("*");
+                        parameters.setGeometry(queryArea.getBoundries());
 
 
-                final ListenableFuture<FeatureQueryResult> future = table.queryFeaturesAsync(parameters);
-
-                future.addDoneListener(new Runnable() {
+                        final ListenableFuture<FeatureQueryResult> future = table.queryFeaturesAsync(parameters);
+                        future.addDoneListener(new Runnable() {
                     @Override
                     public void run() {
 

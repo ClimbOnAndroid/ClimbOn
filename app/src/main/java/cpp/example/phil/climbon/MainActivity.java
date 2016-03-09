@@ -25,6 +25,7 @@ import com.esri.arcgisruntime.datasource.QueryParameters;
 import com.esri.arcgisruntime.geometry.Envelope;
 import com.esri.arcgisruntime.geometry.Point;
 import com.esri.arcgisruntime.layers.FeatureLayer;
+import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.mapping.Basemap;
 import com.esri.arcgisruntime.mapping.Map;
 import com.esri.arcgisruntime.mapping.view.Callout;
@@ -35,9 +36,13 @@ import com.esri.arcgisruntime.mapping.view.MapView;
 import com.esri.arcgisruntime.datasource.arcgis.ServiceFeatureTable;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MainActivity extends AppCompatActivity {
+    private final int VIEW_AREAS=0;
+    private final int VIEW_ROUTES=1;
+    private int currentMapBehavior;
     protected Location theLocation;
     protected Point userLocation;
     protected MapView theMapView;
@@ -46,10 +51,11 @@ public class MainActivity extends AppCompatActivity {
     private AtomicInteger count;
     private FeatureLayer areaLayer, routeLayer;
     private ServiceFeatureTable areaTable,routeTable;
+    private FloatingActionButton returnToAreas;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
+        currentMapBehavior = VIEW_AREAS;
         String URL = "http://services6.arcgis.com/nOUvbp8zErFpCAfI/arcgis/rest/services/Areas/FeatureServer/0";
         String routesURL =  "http://services6.arcgis.com/nOUvbp8zErFpCAfI/arcgis/rest/services/ClimbingRoutes/FeatureServer/0";
         areaTable = new ServiceFeatureTable(URL);
@@ -91,13 +97,18 @@ public class MainActivity extends AppCompatActivity {
                 query.getOutFields().add("*");
                 Callout callout = theMapView.getCallout();
                 //hide the callout on a new click
-                if (callout.isShowing()){
+                if (callout.isShowing()) {
                     callout.hide();
                 }
                 callout.setLocation(clickPoint);
 
-                // call select features
-                final ListenableFuture<FeatureQueryResult> future = areaLayer.selectFeatures(query, FeatureLayer.SelectionMode.NEW);
+                final ListenableFuture<FeatureQueryResult> future;
+                if (currentMapBehavior == VIEW_AREAS) {
+                    // call select features
+                    future = areaLayer.selectFeatures(query, FeatureLayer.SelectionMode.NEW);
+                } else {
+                    future = routeLayer.selectFeatures(query, FeatureLayer.SelectionMode.NEW);
+                }
 
                 // add done loading listener to fire when the selection returns
                 future.addDoneListener(new Runnable() {
@@ -108,18 +119,23 @@ public class MainActivity extends AppCompatActivity {
                             java.util.Map<String, Object> attributes;
                             //call get on the future to get the result
                             FeatureQueryResult result = future.get();
-                            if(result.iterator().hasNext()) {
+                            if (result.iterator().hasNext()) {
                                 Log.i("Test", "Feature: " + result.toString());
                                 selectedFeature = result.iterator().next();
                                 Log.i("Select", selectedFeature.getAttributes().toString());
                                 attributes = selectedFeature.getAttributes();
                                 Log.i("attributes", attributes.toString());
-                                AreaBuilder builder = new AreaBuilder();
-                                Area selectedArea = builder.generateArea(attributes, selectedFeature.getGeometry());
-                                areaSelected(selectedArea);
+                                if (currentMapBehavior == VIEW_AREAS) {
+                                    AreaBuilder builder = new AreaBuilder();
+                                    Area selectedArea = builder.generateArea(attributes, selectedFeature.getGeometry());
+                                    areaSelected(selectedArea);
+                                } else {
+                                    RouteBuilder builder = new RouteBuilder();
+                                    Route selectedRoute = builder.generateRoute(attributes, selectedFeature.getGeometry());
+                                    routeSelected(selectedRoute);
+                                }
                             }
-                        }
-                        catch (Exception e) {
+                        } catch (Exception e) {
                             Log.e("Error", "Select feature failed: " + e.getMessage());
                         }
                     }
@@ -152,11 +168,65 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+        returnToAreas = (FloatingActionButton) findViewById(R.id.returnbutton);
+        returnToAreas.setVisibility(View.GONE);
     }
 
+    /**
+     *
+     * @param selectedRoute
+     */
+    private void routeSelected(Route selectedRoute) {
+        showRouteCallout(theMapView.getCallout(), selectedRoute);
+        theMapView.setViewpointGeometryAsync(selectedRoute.getLocation());
+    }
+
+    /**
+     *
+     * @param callout
+     * @param selectedRoute
+     */
+    private void showRouteCallout(Callout callout, final Route selectedRoute) {
+        LayoutInflater inflater = this.getLayoutInflater();
+        int xmlid = R.xml.calloutstyle;
+        View contentView = inflater.inflate(R.layout.area_callout, null);
+        callout.setStyle(new CalloutStyle(this, R.xml.calloutstyle));
+        callout.setContent(contentView);
+        TextView name = (TextView) contentView.findViewById(R.id.route_name);
+        TextView description =(TextView) contentView.findViewById(R.id.routedescription);
+        TextView rating = (TextView) contentView.findViewById(R.id.calloutrating);
+        Button detailButton = (Button) contentView.findViewById(R.id.gotoroutedetails);
+
+        detailButton.setText("Details");
+
+        detailButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                goToRouteView(selectedRoute);
+            }
+        });
+        name.setText(selectedRoute.getName());
+        description.setText(selectedRoute.getDescription());
+
+
+        callout.show();
+    }
+
+    /**
+     *
+     * @param selectedRoute
+     */
+    private void goToRouteView(Route selectedRoute) {
+
+    }
+
+    /**
+     *
+     * @param selectedArea
+     */
     public void areaSelected(Area selectedArea){
         AreaList.INSTANCE.addArea(selectedArea);
-        showCallout(theMapView.getCallout(), selectedArea);
+        showAreaCallout(theMapView.getCallout(), selectedArea);
         theMapView.setViewpointGeometryAsync(selectedArea.getBoundries());
 
     }
@@ -167,7 +237,7 @@ public class MainActivity extends AppCompatActivity {
      * @param callout
      * @param selectedArea
      */
-    private void showCallout(Callout callout, final Area selectedArea) {
+    private void showAreaCallout(Callout callout, final Area selectedArea) {
         LayoutInflater inflater = this.getLayoutInflater();
         int xmlid = R.xml.calloutstyle;
         View contentView = inflater.inflate(R.layout.area_callout, null);
@@ -219,6 +289,49 @@ public class MainActivity extends AppCompatActivity {
      * @param selectedArea
      */
     private void zoomToRoutes(Area selectedArea) {
+        currentMapBehavior = VIEW_ROUTES;
+        theMapView.getCallout().hide();
+        final Area queryArea = selectedArea;
+        final ServiceFeatureTable table =  RouteMap.getRouteTable(this);
+        returnToAreas.setVisibility(View.VISIBLE);
+
+        if(table.getLoadStatus()== LoadStatus.NOT_LOADED) {
+            table.getOutFields().add("*");
+            table.loadAsync();
+        }
+
+        MapHelper.getMap(this).getOperationalLayers().remove(areaLayer);
+        MapHelper.getMap(this).getOperationalLayers().add(routeLayer);
+
+        table.addDoneLoadingListener(new Runnable() {
+            @Override
+            public void run() {
+                QueryParameters parameters = new QueryParameters();
+                parameters.getOutFields().add("*");
+                parameters.setGeometry(queryArea.getBoundries());
+
+
+                final ListenableFuture<FeatureQueryResult> future = table.queryFeaturesAsync(parameters);
+                future.addDoneListener(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        try {
+                            Feature feature;
+                            FeatureQueryResult result = future.get();
+                            List<Route> routeList = new ArrayList<Route>();
+                            while (result.iterator().hasNext()) {
+                                feature = result.iterator().next();
+                                routeLayer.setFeatureVisible(feature, true);
+                            }
+                        } catch (Exception e) {
+                            Log.e("Error", "Something went wrong.." + e.getMessage());
+                        }
+                    }
+                });
+
+            }
+        });
 
     }
 
