@@ -17,6 +17,7 @@ import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.esri.arcgisruntime.geometry.Geometry;
 import com.esri.arcgisruntime.geometry.SpatialReferences;
 import com.esri.arcgisruntime.concurrent.ListenableFuture;
 import com.esri.arcgisruntime.datasource.Feature;
@@ -56,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         currentMapBehavior = VIEW_AREAS;
+
         String URL = "http://services6.arcgis.com/nOUvbp8zErFpCAfI/arcgis/rest/services/Areas/FeatureServer/0";
         String routesURL =  "http://services6.arcgis.com/nOUvbp8zErFpCAfI/arcgis/rest/services/ClimbingRoutes/FeatureServer/0";
         areaTable = new ServiceFeatureTable(URL);
@@ -169,7 +171,20 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         returnToAreas = (FloatingActionButton) findViewById(R.id.returnbutton);
+        returnToAreas.setClickable(false);
         returnToAreas.setVisibility(View.GONE);
+        returnToAreas.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                theMapView.getCallout().hide();
+                returnToAreas.setVisibility(View.GONE);
+                returnToAreas.setClickable(false);
+                currentMapBehavior = VIEW_AREAS;
+                MapHelper.getMap(getApplicationContext()).getOperationalLayers().add(areaLayer);
+                MapHelper.getMap(getApplicationContext()).getOperationalLayers().remove(routeLayer);
+                theMapView.setViewpointScaleAsync(10000000);
+            }
+        });
     }
 
     /**
@@ -189,7 +204,7 @@ public class MainActivity extends AppCompatActivity {
     private void showRouteCallout(Callout callout, final Route selectedRoute) {
         LayoutInflater inflater = this.getLayoutInflater();
         int xmlid = R.xml.calloutstyle;
-        View contentView = inflater.inflate(R.layout.area_callout, null);
+        View contentView = inflater.inflate(R.layout.route_callout, null);
         callout.setStyle(new CalloutStyle(this, R.xml.calloutstyle));
         callout.setContent(contentView);
         TextView name = (TextView) contentView.findViewById(R.id.route_name);
@@ -207,6 +222,7 @@ public class MainActivity extends AppCompatActivity {
         });
         name.setText(selectedRoute.getName());
         description.setText(selectedRoute.getDescription());
+        rating.setText(Double.toString(selectedRoute.getRating()));
 
 
         callout.show();
@@ -290,6 +306,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void zoomToRoutes(Area selectedArea) {
         currentMapBehavior = VIEW_ROUTES;
+        returnToAreas.setClickable(true);
         theMapView.getCallout().hide();
         final Area queryArea = selectedArea;
         final ServiceFeatureTable table =  RouteMap.getRouteTable(this);
@@ -315,15 +332,17 @@ public class MainActivity extends AppCompatActivity {
                 future.addDoneListener(new Runnable() {
                     @Override
                     public void run() {
-
                         try {
                             Feature feature;
                             FeatureQueryResult result = future.get();
                             List<Route> routeList = new ArrayList<Route>();
+                            List<Geometry> geometries = new ArrayList<Geometry>();
                             while (result.iterator().hasNext()) {
                                 feature = result.iterator().next();
+                                geometries.add(feature.getGeometry());
                                 routeLayer.setFeatureVisible(feature, true);
                             }
+                            //theMapView.setViewpointCenterWithScaleAsync(calculateBounds(geometries).getCenter(), 1000);
                         } catch (Exception e) {
                             Log.e("Error", "Something went wrong.." + e.getMessage());
                         }
@@ -333,6 +352,25 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    private Envelope calculateBounds(List<Geometry> geometries) {
+        Envelope bounds;
+        double Xmax= Double.MIN_VALUE, Xmin = Double.MAX_VALUE, Ymax = Double.MAX_VALUE , Ymin= Double.MIN_VALUE;
+
+        for(Geometry g : geometries){
+           if( g.getExtent().getXMax() > Xmax)
+               Xmax = g.getExtent().getXMax();
+           if ( g.getExtent().getXMin() < Xmin)
+                Xmin = g.getExtent().getXMin();
+           if( g.getExtent().getYMax() > Ymax)
+               Ymax = g.getExtent().getYMax() ;
+            if (g.getExtent().getYMin()<Ymin)
+               Ymin = g.getExtent().getYMin() ;
+        }
+
+        bounds = new Envelope(Xmin, Ymin, Xmax, Ymax, 0, 0, 0, 0, MapHelper.getMap(this).getSpatialReference() );
+        return bounds;
     }
 
 
