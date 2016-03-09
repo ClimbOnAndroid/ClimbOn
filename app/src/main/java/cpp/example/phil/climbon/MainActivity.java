@@ -1,6 +1,7 @@
 package cpp.example.phil.climbon;
 
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -16,6 +17,7 @@ import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.esri.arcgisruntime.geometry.SpatialReferences;
 import com.esri.arcgisruntime.concurrent.ListenableFuture;
 import com.esri.arcgisruntime.datasource.Feature;
 import com.esri.arcgisruntime.datasource.FeatureQueryResult;
@@ -44,18 +46,14 @@ public class MainActivity extends AppCompatActivity {
     private AtomicInteger count;
     private FeatureLayer areaLayer, routeLayer;
     private ServiceFeatureTable areaTable,routeTable;
-    protected ArrayList<Area> areas;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        areas = new ArrayList<Area>();
-        final Map map = new Map(Basemap.createImagery());
+
         String URL = "http://services6.arcgis.com/nOUvbp8zErFpCAfI/arcgis/rest/services/Areas/FeatureServer/0";
         String routesURL =  "http://services6.arcgis.com/nOUvbp8zErFpCAfI/arcgis/rest/services/ClimbingRoutes/FeatureServer/0";
         areaTable = new ServiceFeatureTable(URL);
-        routeTable = new ServiceFeatureTable(routesURL);
-        routeTable.getOutFields().clear();
-        routeTable.getOutFields().add("*");
+        routeTable = RouteMap.getRouteTable(this);
         areaTable.getOutFields().clear();
         areaTable.getOutFields().add("*");
 
@@ -67,10 +65,14 @@ public class MainActivity extends AppCompatActivity {
 
         //initialize the map and the userLocationManager
         theMapView = (MapView) findViewById(R.id.map);
-        theMapView.setMap(map);
+        theMapView.setMap(MapHelper.getMap(this));
         theManager = theMapView.getLocationDisplay();
         theManager.start();
-        map.getOperationalLayers().add(areaLayer);
+        MapHelper.getMap(this).getOperationalLayers().add(areaLayer);
+
+
+        // zoom to a view point of the USA
+        theMapView.setViewpointCenterWithScaleAsync(new Point(-11000000, 5000000, SpatialReferences.getWebMercator()), 100000000);
 
 
         theMapView.setOnTouchListener(new DefaultMapViewOnTouchListener(this, theMapView) {
@@ -83,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
                 double mapTolerance = tolerance * theMapView.getUnitsPerPixel();
 
                 // create objects required to do a selection with a query
-                Envelope envelope = new Envelope(clickPoint.getX() - mapTolerance, clickPoint.getY() - mapTolerance, clickPoint.getX() + mapTolerance, clickPoint.getY() + mapTolerance, 0, 0, 0, 0, map.getSpatialReference());
+                Envelope envelope = new Envelope(clickPoint.getX() - mapTolerance, clickPoint.getY() - mapTolerance, clickPoint.getX() + mapTolerance, clickPoint.getY() + mapTolerance, 0, 0, 0, 0, MapHelper.getMap(this.mContext).getSpatialReference());
                 QueryParameters query = new QueryParameters();
                 query.setGeometry(envelope);
                 query.getOutFields().add("*");
@@ -141,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
                     userLocation = theManager.getMapLocation();
                     Log.i("UserLocation", userLocation.toString());
                     if(userLocation!=null)
-                        theMapView.setViewpointCenterWithScaleAsync(userLocation, 6);
+                        theMapView.setViewpointCenterWithScaleAsync(userLocation, 1000000);
                     Snackbar.make(view, "Moving to your location.", Snackbar.LENGTH_LONG)
                             .setAction("Action", null).show();
                 } else {
@@ -153,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void areaSelected(Area selectedArea){
-        areas.add(selectedArea);
+        AreaList.INSTANCE.addArea(selectedArea);
         showCallout(theMapView.getCallout(), selectedArea);
         theMapView.setViewpointGeometryAsync(selectedArea.getBoundries());
 
@@ -173,15 +175,21 @@ public class MainActivity extends AppCompatActivity {
         callout.setContent(contentView);
         TextView name = (TextView) contentView.findViewById(R.id.name);
         TextView description =(TextView) contentView.findViewById(R.id.description);
-        Button button = (Button) contentView.findViewById(R.id.zoomintoroutes);
+        Button zoomButton = (Button) contentView.findViewById(R.id.zoomintoroutes);
+        Button detailButton = (Button) contentView.findViewById(R.id.gotodetails);
 
-
-
-        button.setText("Zoom In");
-        button.setOnClickListener(new View.OnClickListener() {
+        detailButton.setText("Details");
+        zoomButton.setText("Zoom In");
+        zoomButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 zoomToRoutes(selectedArea);
+            }
+        });
+        detailButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                goToAreaView(selectedArea);
             }
         });
         name.setText(selectedArea.getName());
@@ -191,6 +199,25 @@ public class MainActivity extends AppCompatActivity {
         callout.show();
     }
 
+    /**
+     * This methos starts a new view that is going to get all the data from the selected area and
+     * display it in a lovely UI.  Lovely, I tell you.  Alright, lovely is a stretch. I'm not a graphic
+     * designer.
+     *
+     * @param selectedArea
+     */
+    private void goToAreaView(Area selectedArea) {
+        Intent intent = new Intent(this, AreaView.class);
+        intent.putExtra("Area", selectedArea.getName());
+        startActivity(intent);
+    }
+
+    /**
+     * This method will zoom the map into the selected area and show the views.  I meaan,
+     * that is what is should do.  Milage may vary on it's actual performance.
+     *
+     * @param selectedArea
+     */
     private void zoomToRoutes(Area selectedArea) {
 
     }
@@ -221,13 +248,20 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume(){
         super.onResume();
+        theMapView.resume();
+        if(!theManager.isStarted()){
+             theManager.start();
+            }
         }
 
 
     @Override
     protected void onPause(){
         super.onPause();
-        theManager.stop();
+        theMapView.pause();
+        if(theManager.isStarted()){
+            theManager.stop();
+        }
     }
 
 

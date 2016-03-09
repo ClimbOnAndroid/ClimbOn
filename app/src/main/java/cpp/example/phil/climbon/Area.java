@@ -5,10 +5,12 @@ import android.content.Context;
 import com.esri.arcgisruntime.geometry.Geometry;
 import com.firebase.client.Firebase;
 
+import java.io.Serializable;
+
 /**
  * Created by Phil on 2/12/2016.
  */
-public class Area {
+public class Area  {
     private Context context;
 
     Geometry boundries;
@@ -17,6 +19,8 @@ public class Area {
     Long id;
     String description;
     Area[] subAreas;
+    String webUrl;
+    String imageUrl;
 
     public Area(){
 
@@ -66,8 +70,23 @@ public class Area {
         this.subAreas = subAreas;
     }
 
+    public String getWebUrl(){
+        return webUrl;
+    }
+
+    public String getImageUrl(){
+        return imageUrl;
+    }
+
     public void setId(Long id){this.id = id;}
 
+    public void setWebUrl(String url){
+        this.webUrl = url;
+    }
+
+    public void setimageUrl(String url){
+        this.imageUrl = url;
+    }
 
 
 
