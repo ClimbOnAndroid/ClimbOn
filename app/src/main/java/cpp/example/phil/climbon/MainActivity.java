@@ -20,6 +20,7 @@ import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.esri.arcgisruntime.geometry.Geometry;
 import com.esri.arcgisruntime.geometry.GeometryType;
@@ -204,6 +205,9 @@ public class MainActivity extends AppCompatActivity {
      * @param selectedRoutes
      */
     private void routeSelected(List<Route> selectedRoutes) {
+        for(Route r: selectedRoutes){
+            RouteList.INSTANCE.addRoute(r);
+        }
         showRouteCallout(theMapView.getCallout(), selectedRoutes);
         theMapView.setViewpointGeometryAsync(selectedRoutes.get(0).getLocation());
     }
@@ -217,6 +221,9 @@ public class MainActivity extends AppCompatActivity {
      * @param selectedRoutes
      */
     private void showRouteCallout(Callout callout, final List<Route> selectedRoutes) {
+        if (selectedRoutes.size()>1){
+            Toast.makeText(this, " Multiple Routes Selected. Swipe bubble to see other routes.", Toast.LENGTH_LONG);
+        }
         LayoutInflater inflater = (LayoutInflater) this.getSystemService(
                 Context.LAYOUT_INFLATER_SERVICE);
         final RouteViewPager viewPager;

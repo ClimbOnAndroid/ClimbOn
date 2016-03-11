@@ -1,14 +1,13 @@
 package cpp.example.phil.climbon;
 
 import android.content.Context;
+import android.content.Intent;
 import android.support.v4.view.PagerAdapter;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.List;
@@ -55,7 +54,7 @@ public class CalloutAdapter extends PagerAdapter {
         });
         name.setText(route.getName());
         description.setText(route.getDescription());
-        rating.setText(Double.toString(route.getRating()));
+        rating.setText(route.getRating());
 
         container.addView(view);
 
@@ -87,5 +86,8 @@ public class CalloutAdapter extends PagerAdapter {
     }
 
     private void goToRouteView(Route route) {
+        Intent intent = new Intent(this.context, RouteActivity.class);
+        intent.putExtra("Route", route.getName());
+        this.context.startActivity(intent);
     }
 }

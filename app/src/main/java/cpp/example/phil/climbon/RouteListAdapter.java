@@ -45,7 +45,7 @@ public class RouteListAdapter extends ArrayAdapter<Route>{
         routeName.setText(route.getName());
 
         TextView rating = (TextView) view.findViewById(R.id.rating);
-        rating.setText( Double.toString(route.getRating()));
+        rating.setText( route.getRating());
 
 
         return view;

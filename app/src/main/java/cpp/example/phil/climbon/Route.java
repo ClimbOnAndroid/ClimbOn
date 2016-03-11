@@ -8,7 +8,7 @@ import com.esri.arcgisruntime.geometry.Point;
 public class Route {
     private String name;
     private int length; //length in feet
-    private double rating;
+    private String rating;
     private String description;
     private Point location;
     private String firstAscent;
@@ -19,11 +19,11 @@ public class Route {
 
     }
 
-    public double getRating() {
+    public String getRating() {
         return rating;
     }
 
-    public void setRating(double rating) {
+    public void setRating(String rating) {
         this.rating = rating;
     }
 

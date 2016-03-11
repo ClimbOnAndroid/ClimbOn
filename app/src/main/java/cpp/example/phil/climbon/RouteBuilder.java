@@ -18,7 +18,7 @@ public class RouteBuilder {
     public Route generateRoute(java.util.Map<String, Object> attributes, Geometry geometry){
          String name;
          int length; //length in feet
-         double rating;
+         String rating;
          String description;
          Point location;
          String firstAscent;
@@ -26,7 +26,7 @@ public class RouteBuilder {
 
         newRoute.setDescription((String)attributes.get("DESCRIPTION"));
         newRoute.setName((String) attributes.get("RTNAME"));
-        newRoute.setRating(Double.parseDouble((String) attributes.get("RATING")));
+        newRoute.setRating((String) attributes.get("RATING"));
         newRoute.setLocation((Point)geometry);
 
         return newRoute;
