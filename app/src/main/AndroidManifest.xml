@@ -26,9 +26,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".AreaView"
+        <activity android:name=".AreaView">
 
-            >
+        </activity>
+        <activity android:name=".RouteActivity">
 
         </activity>
     </application>

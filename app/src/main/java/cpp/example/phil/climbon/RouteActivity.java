@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.method.LinkMovementMethod;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -18,22 +19,22 @@ public class RouteActivity extends AppCompatActivity{
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_area_view);
+        setContentView(R.layout.route_view);
 
-        RelativeLayout r = (RelativeLayout) findViewById(R.id.areaView);
+        LinearLayout l = (LinearLayout) findViewById(R.id.routelayout);
 
 
         TextView description = (TextView) findViewById(R.id.descriptiontext);
         TextView rating = (TextView) findViewById(R.id.routerating);
         TextView name = (TextView) findViewById(R.id.routename2);
-        TextView length = (TextView) findViewById(R.id.routelength);
 
-        Route currentRoute =  RouteList.INSTANCE.getRouteByName(getIntent().getStringExtra("Area"));
+
+        Route currentRoute =  RouteList.INSTANCE.getRouteByName(getIntent().getStringExtra("Route"));
 
         description.setText(currentRoute.getDescription());
         rating.setText(currentRoute.getRating());
         name.setText(currentRoute.getName());
-        length.setText(currentRoute.getLength());
+
 
 
 
