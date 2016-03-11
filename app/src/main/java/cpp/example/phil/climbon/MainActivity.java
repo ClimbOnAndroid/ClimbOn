@@ -1,11 +1,14 @@
 package cpp.example.phil.climbon;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -14,10 +17,13 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
 import com.esri.arcgisruntime.geometry.Geometry;
+import com.esri.arcgisruntime.geometry.GeometryType;
+import com.esri.arcgisruntime.geometry.SpatialReference;
 import com.esri.arcgisruntime.geometry.SpatialReferences;
 import com.esri.arcgisruntime.concurrent.ListenableFuture;
 import com.esri.arcgisruntime.datasource.Feature;
@@ -118,10 +124,12 @@ public class MainActivity extends AppCompatActivity {
                     public void run() {
                         try {
                             Feature selectedFeature;
+                            List<Route> routes = new ArrayList<Route>();
                             java.util.Map<String, Object> attributes;
                             //call get on the future to get the result
                             FeatureQueryResult result = future.get();
-                            if (result.iterator().hasNext()) {
+                            int i = 0;
+                            for (;result.iterator().hasNext();i++) {
                                 Log.i("Test", "Feature: " + result.toString());
                                 selectedFeature = result.iterator().next();
                                 Log.i("Select", selectedFeature.getAttributes().toString());
@@ -134,8 +142,12 @@ public class MainActivity extends AppCompatActivity {
                                 } else {
                                     RouteBuilder builder = new RouteBuilder();
                                     Route selectedRoute = builder.generateRoute(attributes, selectedFeature.getGeometry());
-                                    routeSelected(selectedRoute);
+                                    routes.add(selectedRoute);
                                 }
+
+                            }
+                            if (!routes.isEmpty()){
+                                routeSelected(routes);
                             }
                         } catch (Exception e) {
                             Log.e("Error", "Select feature failed: " + e.getMessage());
@@ -189,52 +201,75 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      *
-     * @param selectedRoute
+     * @param selectedRoutes
      */
-    private void routeSelected(Route selectedRoute) {
-        showRouteCallout(theMapView.getCallout(), selectedRoute);
-        theMapView.setViewpointGeometryAsync(selectedRoute.getLocation());
+    private void routeSelected(List<Route> selectedRoutes) {
+        showRouteCallout(theMapView.getCallout(), selectedRoutes);
+        theMapView.setViewpointGeometryAsync(selectedRoutes.get(0).getLocation());
     }
 
     /**
+     * This method. Man, this method.  Looks straightforward, right?  Well, let me tell you, it's a headache.
+     * It makes a viewpager.  When routes are really close together, many are going to get selected as a result.
+     * This leads to the need to see multiple ones and stuff.
      *
      * @param callout
-     * @param selectedRoute
+     * @param selectedRoutes
      */
-    private void showRouteCallout(Callout callout, final Route selectedRoute) {
-        LayoutInflater inflater = this.getLayoutInflater();
-        int xmlid = R.xml.calloutstyle;
-        View contentView = inflater.inflate(R.layout.route_callout, null);
-        callout.setStyle(new CalloutStyle(this, R.xml.calloutstyle));
-        callout.setContent(contentView);
-        TextView name = (TextView) contentView.findViewById(R.id.route_name);
-        TextView description =(TextView) contentView.findViewById(R.id.routedescription);
-        TextView rating = (TextView) contentView.findViewById(R.id.calloutrating);
-        Button detailButton = (Button) contentView.findViewById(R.id.gotoroutedetails);
+    private void showRouteCallout(Callout callout, final List<Route> selectedRoutes) {
+        LayoutInflater inflater = (LayoutInflater) this.getSystemService(
+                Context.LAYOUT_INFLATER_SERVICE);
+        final RouteViewPager viewPager;
+        final CalloutAdapter adapter;
 
-        detailButton.setText("Details");
-
-        detailButton.setOnClickListener(new View.OnClickListener(){
+        //check if the view pager happens to be loaded already.  If so, update the data.
+        if (callout.getContent() instanceof ViewPager){
+            View view = callout.getContent();
+            viewPager= (RouteViewPager) findViewById(R.id.viewPager);
+            adapter = (CalloutAdapter) viewPager.getAdapter();
+            callout.setStyle(new CalloutStyle(this, R.xml.calloutstyle));
+            adapter.updateData(selectedRoutes);
+            adapter.notifyDataSetChanged();
+            }
+        else {
+            View view = inflater.inflate(R.layout.viewpager, (ViewGroup) callout.getContent(), true);
+            viewPager = (RouteViewPager) findViewById(R.id.viewPager);
+            adapter = new CalloutAdapter( this, selectedRoutes);
+            callout.setStyle(new CalloutStyle(this, R.xml.calloutstyle));
+            viewPager.setAdapter(adapter);
+            ((ViewGroup) callout.getContent()).removeAllViews();
+            callout.setContent(viewPager);
+            }
+        callout.show();
+        //change the location of the callout based on the route being displayed...maybe
+        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             @Override
-            public void onClick(View v){
-                goToRouteView(selectedRoute);
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+
+            }
+
+            @Override
+            public void onPageSelected(int position) {
+                try {
+                    updateCalloutLocation(selectedRoutes.get(position).getLocation());
+                } catch (Exception e) {
+                    Log.e("Oops", e.getMessage());
+                }
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+
             }
         });
-        name.setText(selectedRoute.getName());
-        description.setText(selectedRoute.getDescription());
-        rating.setText(Double.toString(selectedRoute.getRating()));
-
-
-        callout.show();
-    }
-
-    /**
-     *
-     * @param selectedRoute
-     */
-    private void goToRouteView(Route selectedRoute) {
 
     }
+
+    //a method for moving the callout.  It proved necessary so it could be called from nested classes.
+    private void updateCalloutLocation(Point location) {
+        theMapView.getCallout().setLocation(location);
+    }
+
 
     /**
      *
@@ -248,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * This Method will display the callout when called, probably should make a method that hides it.
+     * This Method will display the callout when called for areas.
      *
      * @param callout
      * @param selectedArea
@@ -342,7 +377,7 @@ public class MainActivity extends AppCompatActivity {
                                 geometries.add(feature.getGeometry());
                                 routeLayer.setFeatureVisible(feature, true);
                             }
-                            //theMapView.setViewpointCenterWithScaleAsync(calculateBounds(geometries).getCenter(), 1000);
+                            centerOnRoutes(geometries);
                         } catch (Exception e) {
                             Log.e("Error", "Something went wrong.." + e.getMessage());
                         }
@@ -354,24 +389,68 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private Envelope calculateBounds(List<Geometry> geometries) {
-        Envelope bounds;
-        double Xmax= Double.MIN_VALUE, Xmin = Double.MAX_VALUE, Ymax = Double.MAX_VALUE , Ymin= Double.MIN_VALUE;
+    private void centerOnRoutes(List<Geometry> geometries) {
+        double Xmin= Double.MAX_VALUE, Xmax= Double.MIN_VALUE, Ymin=Double.MAX_VALUE, Ymax= Double.MIN_VALUE, XAverage=0, YAverage=0;
+        List<Point> points = new ArrayList<Point>();
+        Point newCenter;
 
+        //make the geometries points
         for(Geometry g : geometries){
-           if( g.getExtent().getXMax() > Xmax)
-               Xmax = g.getExtent().getXMax();
-           if ( g.getExtent().getXMin() < Xmin)
-                Xmin = g.getExtent().getXMin();
-           if( g.getExtent().getYMax() > Ymax)
-               Ymax = g.getExtent().getYMax() ;
-            if (g.getExtent().getYMin()<Ymin)
-               Ymin = g.getExtent().getYMin() ;
+            if (g.getGeometryType() == GeometryType.POINT){
+                points.add((Point) g);
+            }
         }
+        for(Point p: points){
+            XAverage += p.getX();
+            YAverage += p.getY();
+            if (p.getX() < Xmin){
+                Xmin = p.getX();
+            }
+            if (p.getX() > Xmax){
+                Xmax = p.getX();
+            }
+            if (p.getY() <Ymin){
+                Ymin = p.getY();
+            }
+            if (p.getY() >Ymax){
+                Ymax = p.getY();
+            }
+        }
+        XAverage = XAverage/(points.size());
+        YAverage = YAverage/(points.size());
 
-        bounds = new Envelope(Xmin, Ymin, Xmax, Ymax, 0, 0, 0, 0, MapHelper.getMap(this).getSpatialReference() );
-        return bounds;
+        double[] newCenterWebMercator = toWebMercator(YAverage, XAverage);
+        newCenter = new Point(newCenterWebMercator[0],newCenterWebMercator[1], SpatialReferences.getWebMercator());
+        theMapView.setViewpointCenterWithScaleAsync(newCenter, 10000);
+
+
     }
+
+    /**
+     * The earth is a spheroid. Not a perfect sphere, but kinda close. As such, esri uses a projection
+     * that means we need to convert coordinates sometimes. This method does that.  The numbers are derived from
+     * some trig, don't question them.
+     *
+     * @param lat
+     * @param log
+     * @return
+     */
+    private double[] toWebMercator(double lat , double log) {
+        double mercatorX_lon,  mercatorY_lat;
+
+        if ((Math.abs(lat) > 180 || Math.abs(log) > 90))
+            throw new IllegalArgumentException("Out of Range.");
+
+        double num = log * 0.017453292519943295;
+        double x = 6378137.0 * num;
+        double a = lat * 0.017453292519943295;
+
+        mercatorX_lon = x;
+        mercatorY_lat = 3189068.5 * Math.log((1.0 + Math.sin(a)) / (1.0 - Math.sin(a)));
+        double result[] = {mercatorX_lon,mercatorY_lat};
+        return result;
+    }
+
 
 
     @Override

@@ -5,6 +5,7 @@
     backgroundAlpha = "255"
     backgroundColor = "@android:color/white"
     anchor = "8"
+    maxHeightDp ="500"
     android:name = "calloutstyle"
     />
 </resources>
