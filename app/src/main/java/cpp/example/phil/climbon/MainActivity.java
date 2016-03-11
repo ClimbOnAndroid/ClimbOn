@@ -390,7 +390,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void centerOnRoutes(List<Geometry> geometries) {
-        double Xmin= Double.MAX_VALUE, Xmax= Double.MIN_VALUE, Ymin=Double.MAX_VALUE, Ymax= Double.MIN_VALUE, XAverage=0, YAverage=0;
+        double Xmin= Double.MAX_VALUE, Xmax= Double.NEGATIVE_INFINITY, Ymin=Double.MAX_VALUE, Ymax= Double.NEGATIVE_INFINITY, XAverage=0, YAverage=0;
         List<Point> points = new ArrayList<Point>();
         Point newCenter;
 
@@ -416,12 +416,12 @@ public class MainActivity extends AppCompatActivity {
                 Ymax = p.getY();
             }
         }
-        XAverage = XAverage/(points.size());
-        YAverage = YAverage/(points.size());
+        XAverage = (Xmax + Xmin)/2;
+        YAverage = (Ymax + Ymin)/2;
 
         double[] newCenterWebMercator = toWebMercator(YAverage, XAverage);
         newCenter = new Point(newCenterWebMercator[0],newCenterWebMercator[1], SpatialReferences.getWebMercator());
-        theMapView.setViewpointCenterWithScaleAsync(newCenter, 10000);
+        theMapView.setViewpointCenterWithScaleAsync(newCenter, 100000);
 
 
     }
@@ -438,8 +438,8 @@ public class MainActivity extends AppCompatActivity {
     private double[] toWebMercator(double lat , double log) {
         double mercatorX_lon,  mercatorY_lat;
 
-        if ((Math.abs(lat) > 180 || Math.abs(log) > 90))
-            throw new IllegalArgumentException("Out of Range.");
+        if ((Math.abs(log) > (Double) 180.00) || (Math.abs(lat) > 90.00))
+            throw new IllegalArgumentException("Out of Range."+ Math.abs(lat)+","+ Math.abs(log));
 
         double num = log * 0.017453292519943295;
         double x = 6378137.0 * num;
